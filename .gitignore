@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+npm-debug.log*
+
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
+
+.DS_Store
+.vscode/
+.idea/
+
+# Python (apps/ml)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

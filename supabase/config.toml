@@ -1,0 +1,92 @@
+# Supabase CLI config for local development (`supabase start`).
+# Hosted projects are configured in the dashboard; keep the two in sync.
+
+project_id = "kisansetu"
+
+[api]
+enabled = true
+port = 54321
+# NOTE: the `app` schema is deliberately absent. Authorization helpers live
+# there precisely so PostgREST cannot expose them to a browser client.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# Farmers self-register; staff/admin accounts are provisioned by an operator
+# with `npm run provision` through the Admin API (§40). Signup being enabled here only allows
+# an anonymous user to create a FARMER profile — the RLS INSERT policy on
+# public.profiles rejects any other role.
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+template = "Your KisanSetu verification code is {{ .Code }}"
+
+# ---------------------------------------------------------------------------
+# LOCAL AUTOMATED-TEST NUMBERS ONLY.
+#
+# The integration and RLS suites sign in the accounts in
+# apps/api/tests/fixtures/accounts.ts through the real signInWithOtp/verifyOtp
+# flow; locally there is no SMS provider, so Supabase's own test-number
+# feature supplies the code. This file configures only the LOCAL stack
+# (`supabase start`) and has no effect on a hosted project.
+#
+# Do NOT copy these into a hosted project's "Test phone numbers". A hosted
+# project authenticates through a real SMS provider; it carries no fixed OTPs
+# and no test accounts. The fixture seeder refuses non-local targets.
+#
+# Run the suites with TEST_OTP set to the code below.
+# ---------------------------------------------------------------------------
+[auth.sms.test_otp]
+# Fixture farmers
+"919000000001" = "123456"
+"919000000002" = "123456"
+"919000000003" = "123456"
+"919000000004" = "123456"
+"919000000005" = "123456"
+# Fixture centre staff
+"919000000011" = "123456"
+"919000000012" = "123456"
+# Fixture district admins
+"919000000021" = "123456"
+"919000000022" = "123456"
+# Fixture state admin
+"919000000031" = "123456"
+# Never seeded — the new-farmer registration test starts from it
+"919000000099" = "123456"
+
+[analytics]
+enabled = false

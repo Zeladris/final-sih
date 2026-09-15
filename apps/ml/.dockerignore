@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+# Artifacts are built inside the image by `python -m training.train`; never
+# copy a developer's locally-trained ones in.
+app/models/artifacts/

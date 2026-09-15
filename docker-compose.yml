@@ -1,0 +1,68 @@
+# KisanSetu — local stack (§10, §47).
+#
+#   git clone  →  cp .env.example .env  →  fill in Supabase values  →  docker compose up
+#
+# Supabase (database, auth, storage) is hosted and is NOT part of this file:
+# it is the source of truth and is reached over the network by both the API
+# and the browser. What runs here is our own three services.
+#
+# Nothing below hard-codes a hostname a cloud deployment could not change:
+# ML_SERVICE_URL points at the `ml` service here, and at a deployed container
+# URL in the cloud — the same image either way.
+#
+# No secrets in this file. Everything sensitive comes from .env, which is
+# gitignored.
+
+services:
+  ml:
+    build:
+      context: ./apps/ml
+      dockerfile: Dockerfile
+    image: kisansetu/ml:dev
+    # Internal by default: only the API talks to it. Publish the port only if
+    # you want to poke at /health or /v1/models yourself.
+    ports:
+      - '${ML_PORT:-8000}:8000'
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: kisansetu/api:dev
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Kolkata}
+      # Service-to-service, inside the compose network.
+      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml:8000}
+      ML_TIMEOUT_MS: ${ML_TIMEOUT_MS:-8000}
+      QUALITY_CONFIDENCE_THRESHOLD: ${QUALITY_CONFIDENCE_THRESHOLD:-0.75}
+      WEATHER_PROVIDER: ${WEATHER_PROVIDER:-open-meteo}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-demo}
+    ports:
+      - '${API_PORT:-4000}:4000'
+    depends_on:
+      ml:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Vite inlines these at build time; only publishable values belong here.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    image: kisansetu/web:dev
+    ports:
+      - '${WEB_PORT:-5173}:80'
+    depends_on:
+      - api
+    restart: unless-stopped

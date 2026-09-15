@@ -1,0 +1,41 @@
+import { Link } from 'react-router-dom';
+import type { PrimaryAction } from '@kisansetu/shared';
+import { useT } from '../../i18n/index.js';
+
+/**
+ * The single most useful next action (§10, §36).
+ *
+ * When the destination belongs to a phase that does not exist yet, the button
+ * renders disabled with an explanation instead of linking somewhere broken.
+ * Showing it greyed out is honest; hiding it would leave a verified farmer
+ * with no visible next step at all.
+ */
+export function PrimaryActionCard({ action }: { action: PrimaryAction }): JSX.Element {
+  const t = useT();
+
+  if (!action.available) {
+    return (
+      <section className="card">
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="btn-primary w-full"
+        >
+          {t(action.labelKey)}
+        </button>
+        {action.noteKey ? (
+          <p className="mt-2 text-center text-xs text-stone-500">{t(action.noteKey)}</p>
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section className="card">
+      <Link to={action.to ?? '/'} className="btn-primary block text-center">
+        {t(action.labelKey)}
+      </Link>
+    </section>
+  );
+}

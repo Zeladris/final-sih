@@ -1,0 +1,33 @@
+{
+  "name": "kisansetu",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "KisanSetu / Procuremintra - procurement centre slot booking platform (Phase 0 foundation)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @kisansetu/shared && npm run build -w @kisansetu/api && npm run build -w @kisansetu/web",
+    "dev": "npm run dev -w @kisansetu/api & npm run dev -w @kisansetu/web",
+    "dev:api": "npm run dev -w @kisansetu/api",
+    "dev:web": "npm run dev -w @kisansetu/web",
+    "test": "npm run test -w @kisansetu/api",
+    "typecheck": "npm run typecheck -w @kisansetu/shared && npm run typecheck -w @kisansetu/api && npm run typecheck -w @kisansetu/web",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "seed": "npm run seed -w @kisansetu/api",
+    "seed:fixtures": "npm run seed:fixtures -w @kisansetu/api",
+    "seed:demo": "npm run seed:demo -w @kisansetu/api",
+    "reset:demo": "npm run reset:demo -w @kisansetu/api",
+    "verify": "npm run verify -w @kisansetu/api"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true
+  }
+}

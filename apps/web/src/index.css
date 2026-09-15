@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased;
+  }
+
+  /* Many farmers will use this one-handed on a phone in a field; keep hit
+     targets generous and focus rings obvious. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-harvest-600 ring-offset-2;
+  }
+
+  /* §67: the app must stay fully understandable with motion off, not just
+     less distracting — so this removes transition/animation duration
+     rather than merely shortening it. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply block text-sm font-medium text-stone-700 mb-1;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base
+           shadow-sm placeholder:text-stone-400
+           focus:border-harvest-600 focus:ring-1 focus:ring-harvest-600;
+  }
+
+  .btn-primary {
+    @apply w-full rounded-lg bg-harvest-700 px-4 py-3 text-base font-semibold text-white
+           shadow-sm transition hover:bg-harvest-800
+           disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium
+           text-stone-700 transition hover:bg-stone-50;
+  }
+
+  .card {
+    @apply rounded-xl border border-stone-200 bg-white p-5 shadow-sm;
+  }
+}
