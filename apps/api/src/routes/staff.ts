@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/authorization.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validation.js';
 import multer from 'multer';
 import { env } from '../config/env.js';
-import { documentUploadLimiter, paymentLimiter } from '../middleware/rateLimit.js';
+import { arrivalOtpLimiter, documentUploadLimiter, paymentLimiter } from '../middleware/rateLimit.js';
 import {
   getQualityAssessment,
   getQueue,
@@ -98,6 +98,11 @@ staffRouter.get('/me/dashboard', asyncHandler(getStaffDashboard));
 // --- Procurement operations (the primary staff workflow, §2) -----------------
 
 const bookingParamSchema = z.object({ bookingId: uuidSchema });
+
+/** The 4-digit code the farmer reads aloud on arrival (§ arrival OTP). */
+const arrivalOtpBodySchema = z
+  .object({ otp: z.string().trim().min(1, 'Enter the arrival code the farmer reads to you.') })
+  .strict();
 
 // --- Fairness-aware queue (Phase 7) ------------------------------------------
 //
@@ -230,6 +235,8 @@ staffRouter.post(
 staffRouter.post(
   '/me/bookings/:bookingId/arrive',
   validateParams(bookingParamSchema),
+  validateBody(arrivalOtpBodySchema),
+  arrivalOtpLimiter,
   asyncHandler(postArrive),
 );
 

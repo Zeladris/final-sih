@@ -271,6 +271,8 @@ export interface BookingRow {
   expected_quantity_kg: string | number;
   status: BookingStatus;
   created_at: string;
+  arrival_otp_code: string;
+  arrival_otp_verified_at: string | null;
 }
 
 export interface OperationRow {
@@ -292,7 +294,7 @@ export interface OperationRow {
 
 const BOOKING_COLUMNS =
   'id, booking_reference, farmer_user_id, slot_id, centre_id, crop, crop_id, expected_quantity_kg, ' +
-  'status, created_at';
+  'status, created_at, arrival_otp_code, arrival_otp_verified_at';
 
 const OPERATION_COLUMNS =
   'id, booking_id, session_id, centre_id, state, arrived_at, checked_in_at, claimed_by, ' +

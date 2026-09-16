@@ -160,6 +160,14 @@ export interface FarmerBookingStatus {
   estimatedWaitMinutes: number | null;
   queueUpdatedAt: string | null;
 
+  /**
+   * The 4-digit code to read aloud to centre staff on arrival — this
+   * farmer's own booking only, never anyone else's, and never sent to staff.
+   * Null once arrival is already confirmed (nothing left to show) or the
+   * booking can no longer be arrived at (cancelled/completed/no-show).
+   */
+  arrivalCode: string | null;
+
   centreName: string;
   centreVillage: string | null;
   cropName: string;

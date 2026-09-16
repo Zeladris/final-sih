@@ -129,6 +129,8 @@ cp .env.example .env
 | `MAX_UPLOAD_BYTES` | API | Document size limit, default 10 MB |
 | `VITE_SUPABASE_URL` `VITE_SUPABASE_ANON_KEY` `VITE_API_URL` | Web | Public values only |
 | `ML_SERVICE_URL` | API | Optional. Unset = manual quality only, nothing blocked |
+| `BHASHINI_USER_ID` `BHASHINI_API_KEY` | API | Optional. Unset = voice booking uses the browser's own speech engine instead of Bhashini |
+| `TWILIO_ACCOUNT_SID` `TWILIO_AUTH_TOKEN` | API | Optional. Unset = the IVR webhook runs but skips signature verification |
 | `WEATHER_PROVIDER` | API | `open-meteo` (keyless) or `none` |
 | `PAYMENT_PROVIDER` | API | Only `demo` exists; it moves no money |
 

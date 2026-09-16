@@ -25,11 +25,14 @@ export interface StatusBookingRow {
   status_version: string | number;
   status_updated_at: string;
   cancellation_reason: string | null;
+  arrival_otp_code: string;
+  arrival_otp_verified_at: string | null;
 }
 
 const STATUS_BOOKING_COLUMNS =
   'id, booking_reference, farmer_user_id, centre_id, slot_id, crop_id, crop, expected_quantity_kg, ' +
-  'quantity_unit, status, procurement_status, status_version, status_updated_at, cancellation_reason';
+  'quantity_unit, status, procurement_status, status_version, status_updated_at, cancellation_reason, ' +
+  'arrival_otp_code, arrival_otp_verified_at';
 
 export async function findStatusBooking(
   db: SupabaseClient,

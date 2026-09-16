@@ -46,8 +46,13 @@ export function CurrentStatusCard({ status }: { status: FarmerBookingStatus }): 
         <dl className="mt-3 grid grid-cols-2 gap-3">
           {status.queuePosition !== null ? (
             <div className="rounded-lg bg-white/70 px-3 py-2">
-              <dt className="text-xs text-stone-600">{t('liveStatus.queuePosition')}</dt>
-              <dd className="text-2xl font-semibold text-stone-900">{status.queuePosition}</dd>
+              {/* "Position 3" makes a farmer do the subtraction themselves;
+                  saying how many are ahead is the number they actually want
+                  (§ position 1 means 0 people ahead — you're next). */}
+              <dt className="text-xs text-stone-600">{t('liveStatus.peopleAhead')}</dt>
+              <dd className="text-2xl font-semibold text-stone-900">
+                {Math.max(0, status.queuePosition - 1)}
+              </dd>
             </div>
           ) : null}
           {status.estimatedWaitMinutes !== null ? (
@@ -59,6 +64,16 @@ export function CurrentStatusCard({ status }: { status: FarmerBookingStatus }): 
             </div>
           ) : null}
         </dl>
+      ) : null}
+
+      {status.arrivalCode ? (
+        <div className="mt-3 rounded-lg border border-harvest-300 bg-white px-3 py-2.5">
+          <p className="text-xs font-medium text-stone-600">{t('liveStatus.arrivalCodeTitle')}</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-widest text-harvest-800">
+            {status.arrivalCode}
+          </p>
+          <p className="mt-1 text-xs text-stone-500">{t('liveStatus.arrivalCodeHelp')}</p>
+        </div>
       ) : null}
     </section>
   );

@@ -54,7 +54,7 @@ export const createBookingSchema = z
     // Observability only (Phase 9 §46) — never read by eligibility, capacity
     // or the queue. A missing value means an older client, treated the same
     // as 'standard'.
-    bookingMethod: z.enum(['standard', 'voice']).optional(),
+    bookingMethod: z.enum(['standard', 'voice', 'ivr']).optional(),
   })
   .strict()
   .refine(

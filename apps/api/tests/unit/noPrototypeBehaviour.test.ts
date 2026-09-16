@@ -8,7 +8,12 @@ import { describe, expect, it } from 'vitest';
  *
  * This scans the product source — `apps/api/src` and `apps/web/src` — for the
  * things Phase 1 says must be gone. Test tooling under `tests/` is deliberately
- * out of scope: fixtures are allowed to exist there and nowhere else.
+ * out of scope: fixtures are allowed to exist there and nowhere else. So is
+ * `src/scripts/`: operator-run CLI tools (seed/provision/demo-account
+ * scripts) that `server.ts`/`app.ts` never import and a farmer's real login
+ * can never reach — this guard is about what the SERVED application does,
+ * not what an operator's own tooling is allowed to configure on purpose,
+ * with its own header comment explaining exactly what and why.
  *
  * A comment explaining that demo mode was removed is fine; an actual demo
  * number or a `DEMO_MODE` read is not. The patterns below target the latter.
@@ -19,11 +24,18 @@ const ROOTS = [
   resolve(process.cwd(), '../web/src'),
 ];
 
+// Only each root's OWN top-level scripts/ — not any directory named
+// "scripts" at any depth, which would also exempt a shipped feature that
+// happened to use that name (e.g. apps/web/src/features/x/scripts/).
+const EXCLUDED_DIRS = new Set(ROOTS.map((root) => join(root, 'scripts')));
+
 function sourceFiles(dir: string): string[] {
   const entries = readdirSync(dir);
   return entries.flatMap((entry) => {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) return sourceFiles(full);
+    if (statSync(full).isDirectory()) {
+      return EXCLUDED_DIRS.has(full) ? [] : sourceFiles(full);
+    }
     return /\.(ts|tsx|json)$/.test(entry) ? [full] : [];
   });
 }

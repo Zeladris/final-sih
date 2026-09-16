@@ -284,6 +284,7 @@ function assertBookingProcessable(booking: ops.BookingRow): void {
 export async function markArrived(
   auth: AuthContext,
   bookingId: string,
+  otp: string,
 ): Promise<OperationalBooking> {
   // Scope before state, always. "This booking is not at your centre" is a more
   // fundamental answer than "your session is not open", and checking the
@@ -296,6 +297,21 @@ export async function markArrived(
 
   if (operation && operation.state !== 'BOOKED') {
     throw conflict('This farmer has already been marked as arrived.');
+  }
+
+  // Arrival now requires proof the farmer is actually present: a 4-digit
+  // code shown only in their own app (statusService.ts), read aloud to
+  // staff. Never trust a staff member's click alone (§ the whole point of
+  // this feature — see supabase/migrations/20261001000031_arrival_otp.sql).
+  if (!booking.arrival_otp_verified_at && otp.trim() !== booking.arrival_otp_code) {
+    throw validationError('That arrival code is incorrect. Ask the farmer to read it from their app.');
+  }
+
+  if (!booking.arrival_otp_verified_at) {
+    await supabaseAdminClient
+      .from('bookings')
+      .update({ arrival_otp_verified_at: new Date().toISOString() })
+      .eq('id', bookingId);
   }
 
   const record =

@@ -30,6 +30,22 @@ export async function findProfileById(db: SupabaseClient, userId: string): Promi
   return row ? toProfile(row) : null;
 }
 
+/**
+ * Looks up a profile by its Supabase Auth phone number (Phase 9 IVR §2) —
+ * `profiles.phone` is a database-trigger mirror of `auth.users.phone`, so
+ * this can never be spoofed by anything a client sends (see `insertProfile`
+ * below); it only ever reflects who actually verified that number with an
+ * OTP. Requires a service-role `db`: there is no session/JWT for a phone
+ * call to scope an RLS-bound client to.
+ */
+export async function findProfileByPhone(db: SupabaseClient, phone: string): Promise<Profile | null> {
+  const row = unwrapMaybe<ProfileRow>(
+    await db.from('profiles').select(PROFILE_COLUMNS).eq('phone', phone).maybeSingle(),
+    'profiles.findByPhone',
+  );
+  return row ? toProfile(row) : null;
+}
+
 export async function insertProfile(
   db: SupabaseClient,
   input: { id: string; role: Role; fullName: string | null; preferredLanguage: Language },

@@ -46,8 +46,12 @@ export interface VoiceProvider {
   stopListening(): void;
 }
 
-/** What the turn-by-turn conversation is doing right now (§6, §34). */
-export type VoiceTurnPhase = 'idle' | 'speaking' | 'listening' | 'thinking' | 'error';
+/** What the turn-by-turn conversation is doing right now (§6, §34).
+ *  'ready' is a distinct waiting state from 'listening': the assistant has
+ *  finished speaking and is waiting for the farmer to tap the mic — the
+ *  microphone itself only opens once they do (§ push-to-talk, not
+ *  auto-listen). */
+export type VoiceTurnPhase = 'idle' | 'speaking' | 'ready' | 'listening' | 'thinking' | 'error';
 
 /** The steps voice actively drives (§7). Centre/date/slot/photo/review stay
  *  primarily visual (§8) — voice hands off to the existing form there. */

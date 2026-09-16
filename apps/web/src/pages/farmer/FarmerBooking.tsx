@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ALL_STORAGE_DURATION_BANDS,
@@ -16,19 +16,21 @@ import type {
   FarmerBooking as Booking,
   PreArrivalQualityAssessment,
   ProcurementSlot,
+  RegistrationView,
   StorageDurationBand,
   StorageType,
 } from '@kisansetu/shared';
 import { api, ApiRequestError } from '../../lib/api.js';
 import { useI18n, useT } from '../../i18n/index.js';
 import { FarmerHeader } from '../../components/farmer/FarmerHeader.js';
+import { LanguageSwitcher } from '../../components/LanguageSwitcher.js';
 import { ErrorPanel } from '../../components/AppShell.js';
 import { Spinner } from '../../components/Spinner.js';
 import { VoiceBookingPanel } from '../../features/voice-booking/VoiceBookingPanel.js';
 import { useVoiceBooking } from '../../features/voice-booking/hooks/useVoiceBooking.js';
-import { browserVoiceProvider } from '../../features/voice-booking/providers/browserSpeechProvider.js';
+import { getActiveVoiceProvider, primeVoiceProvider } from '../../features/voice-booking/providers/activeProvider.js';
 import { matchByNameOrOrdinal } from '../../features/voice-booking/utils/voiceCommands.js';
-import type { VoiceLanguage } from '../../features/voice-booking/types.js';
+import type { VoiceLanguage, VoiceProvider } from '../../features/voice-booking/types.js';
 import { useCurrentLocation } from '../../features/location/hooks/useCurrentLocation.js';
 import { LocationSearch } from '../../features/location/components/LocationSearch.js';
 
@@ -100,7 +102,18 @@ export function FarmerBooking(): JSX.Element {
   // survives the visual step actually changing under it.
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceDone, setVoiceDone] = useState(false);
-  const voiceProvider = useRef(browserVoiceProvider()).current;
+  // Starts as the browser's own speech engine; becomes BhashiniProvider once
+  // the backend confirms it is configured (§43) — see activeProvider.ts.
+  const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>(() => getActiveVoiceProvider());
+  useEffect(() => {
+    let cancelled = false;
+    void primeVoiceProvider().then((provider) => {
+      if (!cancelled) setVoiceProvider(provider);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // VoiceLanguage is now exactly Language (§34) — kept as its own local so
   // the voice hook's dependency is explicit rather than reading `language`
   // through three layers of prop-drilling.
@@ -124,6 +137,72 @@ export function FarmerBooking(): JSX.Element {
       .get<{ crops: Crop[] }>('/api/farmer/booking/crops')
       .then((data) => setCrops(data.crops))
       .catch(setCropsError);
+  }, []);
+
+  // Reuses the farmer's last storage answer — or, for a first-ever booking,
+  // their registered address — so the location step doesn't start blank
+  // every single time ("don't ask again unless they need to change"). Purely
+  // additive: on any failure this just leaves the step starting blank, same
+  // as before this existed, so it never blocks booking.
+  const [locationPrefillSource, setLocationPrefillSource] = useState<'lastBooking' | 'profile' | null>(
+    null,
+  );
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get<{ bookings: Booking[] }>('/api/farmer/bookings')
+      .then((data) => {
+        if (cancelled) return null;
+        const last = data.bookings[0];
+        if (!last?.storageLocationText) return null;
+
+        setDraft((current) =>
+          current.storageText || current.coords
+            ? current
+            : {
+                ...current,
+                storageText: last.storageLocationText as string,
+                storageDurationBand: last.storageDurationBand,
+                storageType: last.storageType,
+                coords:
+                  last.storageLatitude !== null && last.storageLongitude !== null
+                    ? { latitude: last.storageLatitude, longitude: last.storageLongitude }
+                    : current.coords,
+              },
+        );
+        setLocationPrefillSource('lastBooking');
+        return last;
+      })
+      .then((last) => {
+        if (cancelled || last) return; // unmounted, or already prefilled from a past booking
+        return api.get<RegistrationView>('/api/farmer/registration').then((view) => {
+          if (cancelled) return;
+          const address = [view.farmer.village, view.farmer.addressLine1, view.farmer.addressLine2]
+            .filter(Boolean)
+            .join(', ');
+          if (!address) return;
+
+          setDraft((current) =>
+            current.storageText
+              ? current
+              : {
+                  ...current,
+                  storageText: address,
+                  coords:
+                    view.farmer.latitude !== null && view.farmer.longitude !== null
+                      ? { latitude: view.farmer.latitude, longitude: view.farmer.longitude }
+                      : current.coords,
+                },
+          );
+          setLocationPrefillSource('profile');
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const update = (patch: Partial<Draft>): void => setDraft((current) => ({ ...current, ...patch }));
@@ -264,6 +343,8 @@ export function FarmerBooking(): JSX.Element {
       {step === 'location' ? (
         <LocationStep
           draft={draft}
+          prefillSource={locationPrefillSource}
+          onClearPrefillSource={() => setLocationPrefillSource(null)}
           onChange={update}
           onBack={() => setStep('details')}
           onNext={() => setStep('photo')}
@@ -387,6 +468,20 @@ function VoiceEntryChoice({ onChooseVoice }: { onChooseVoice: () => void }): JSX
   return (
     <section className="card border-2 border-harvest-200 bg-harvest-50/40">
       <h2 className="font-semibold text-stone-900">{t('voice.entry.heading')}</h2>
+
+      {/* Which language voice booking listens/speaks in is exactly the site
+          language (§34) — surfaced here, not hidden in the header, since this
+          is the moment it actually matters most: pick it BEFORE tapping
+          "Voice booking" below, since that's what the session starts with. */}
+      <div className="mt-3 rounded-lg border border-harvest-300 bg-white px-3 py-2.5">
+        <span className="block text-sm font-semibold text-stone-900">
+          🌐 {t('language.title')}
+        </span>
+        <div className="mt-2">
+          <LanguageSwitcher />
+        </div>
+      </div>
+
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <button
           type="button"
@@ -471,9 +566,16 @@ function CropStep({
                   <span className="block font-medium text-stone-900">
                     {cropName(crop, language)}
                   </span>
-                  <span className="block text-xs text-stone-500">
-                    {language === 'ta' ? crop.nameEn : crop.nameTa}
-                  </span>
+                  {/* Crop names only ever exist in English and Tamil (§ no
+                      Kannada/Hindi/Malayalam translation exists to show) — a
+                      second line only makes sense when the chosen language IS
+                      one of those two; otherwise it would show a stray Tamil
+                      name no matter which language was actually picked. */}
+                  {language === 'en' ? (
+                    <span className="block text-xs text-stone-500">{crop.nameTa}</span>
+                  ) : language === 'ta' ? (
+                    <span className="block text-xs text-stone-500">{crop.nameEn}</span>
+                  ) : null}
                 </span>
                 <span aria-hidden="true" className="text-harvest-700">
                   →
@@ -550,11 +652,15 @@ function DetailsStep({
 
 function LocationStep({
   draft,
+  prefillSource,
+  onClearPrefillSource,
   onChange,
   onBack,
   onNext,
 }: {
   draft: Draft;
+  prefillSource: 'lastBooking' | 'profile' | null;
+  onClearPrefillSource: () => void;
   onChange: (patch: Partial<Draft>) => void;
   onBack: () => void;
   onNext: () => void;
@@ -585,10 +691,26 @@ function LocationStep({
           id="storage"
           className="field-input"
           value={draft.storageText}
-          onChange={(event) => onChange({ storageText: event.target.value })}
+          onChange={(event) => {
+            onChange({ storageText: event.target.value });
+            // The hint below describes where the PREVIOUS text came from —
+            // stale and misleading the moment the farmer changes it (§ "don't
+            // ask again unless they need to change" cuts both ways: once
+            // they've changed it, the app should stop implying it didn't).
+            if (prefillSource) onClearPrefillSource();
+          }}
           placeholder={t('booking.location.placeholder')}
           autoFocus
         />
+        {prefillSource ? (
+          <p className="mt-1 text-xs text-stone-500">
+            {t(
+              prefillSource === 'lastBooking'
+                ? 'booking.location.prefillLastBooking'
+                : 'booking.location.prefillProfile',
+            )}
+          </p>
+        ) : null}
       </div>
 
       {/* Storage duration and kind (§6). Bands, not a number to work out —
@@ -737,7 +859,7 @@ function CentreStep({
     if (centres.length === 0) return;
 
     let cancelled = false;
-    const provider = browserVoiceProvider();
+    const provider = getActiveVoiceProvider();
 
     void (async () => {
       if (!provider.isSupported()) return;

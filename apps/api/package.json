@@ -18,7 +18,9 @@
     "provision": "tsx src/scripts/provision.ts",
     "reset:storage": "tsx src/scripts/resetStorage.ts",
     "seed:demo": "tsx src/scripts/seedDemo.ts",
-    "reset:demo": "tsx src/scripts/resetDemo.ts"
+    "reset:demo": "tsx src/scripts/resetDemo.ts",
+    "ivr:simulate": "tsx src/scripts/ivrSimulate.ts",
+    "add:farmer": "tsx src/scripts/addMyPhoneAsFarmer.ts"
   },
   "dependencies": {
     "@kisansetu/shared": "*",
@@ -29,6 +31,7 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "multer": "^2.3.0",
+    "node-edge-tts": "^1.2.10",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -41,6 +41,9 @@ export interface VoiceBookingState {
   resume: () => void;
   repeat: () => void;
   stop: () => void;
+  /** Starts listening for this turn's answer — only ever called by the
+   *  farmer tapping the mic while `phase === 'ready'`; a no-op otherwise. */
+  tapMic: () => void;
 }
 
 /**
@@ -77,10 +80,18 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
   const lastPromptKeyRef = useRef<{ key: string; values?: Record<string, string | number> } | null>(
     null,
   );
+  // Resolved by tapMic() (or by stop(), so a session ended mid-wait never
+  // hangs forever on a tap that will now never come).
+  const micTapResolveRef = useRef<(() => void) | null>(null);
 
   const waitIfPaused = useCallback(async (): Promise<void> => {
     if (!pausedRef.current) return;
     await new Promise<void>((resolve) => resumeWaiters.current.push(resolve));
+  }, []);
+
+  const releaseMicTapWait = useCallback((): void => {
+    micTapResolveRef.current?.();
+    micTapResolveRef.current = null;
   }, []);
 
   const speak = useCallback(
@@ -98,6 +109,29 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
   const listen = useCallback(
     async (generation: number) => {
       if (generation !== generationRef.current) return null;
+
+      // Push-to-talk: the mic only opens once the farmer taps it, never
+      // automatically the instant the prompt finishes speaking. This is also
+      // what closed the earlier "it isn't taking my voice" gap — recognition
+      // starting in the same instant audio playback ends was a known source
+      // of it missing the very start of what the farmer says, or picking up
+      // the tail of the prompt itself; a farmer-initiated tap has neither
+      // problem, since it can only happen after they've decided to speak.
+      setPhase('ready');
+      await new Promise<void>((resolve) => {
+        micTapResolveRef.current = resolve;
+      });
+      if (generation !== generationRef.current) return null;
+
+      // The recognizer has real startup latency between being asked to
+      // start and actually capturing audio — a farmer who taps and speaks
+      // immediately (most likely for a short word like "yes", far less
+      // likely for a longer number they have to think through saying) can
+      // have the very start of what they say clipped before capture has
+      // truly begun. This gives it a moment to be ready first.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (generation !== generationRef.current) return null;
+
       setPhase('listening');
       setTranscript(null);
       const result = await provider.listenOnce(language, 8000);
@@ -107,6 +141,11 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
     },
     [provider, language],
   );
+
+  const tapMic = useCallback(() => {
+    if (phase !== 'ready') return;
+    releaseMicTapWait();
+  }, [phase, releaseMicTapWait]);
 
   const runSession = useCallback(async () => {
     const generation = generationRef.current;
@@ -138,16 +177,35 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
     // --- QUANTITY ---------------------------------------------------------
     setCurrentStep('quantity');
     let quantity: number | null = null;
+    // Tracks whether the PREVIOUS attempt heard a number fine and only
+    // failed at the yes/no confirmation — so the retry prompt below never
+    // falsely claims "I didn't catch a number" when it plainly did (§ a
+    // confirmed bug: that wrong claim made a confirmation failure look like
+    // a hearing failure, which is worse than the failure itself).
+    let lastCandidateRejected = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS && alive() && quantity === null; attempt++) {
       await waitIfPaused();
-      await speak(generation, attempt === 0 ? 'voice.prompt.quantity' : 'voice.prompt.quantityRetry');
+      await speak(
+        generation,
+        attempt === 0
+          ? 'voice.prompt.quantity'
+          : lastCandidateRejected
+            ? 'voice.prompt.quantityNotConfirmed'
+            : 'voice.prompt.quantityRetry',
+      );
       if (!alive()) return;
       const result = await listen(generation);
       if (!alive()) return;
-      if (!result) continue;
+      if (!result) {
+        lastCandidateRejected = false;
+        continue;
+      }
       setPhase('thinking');
       const candidate = normalizeQuantity(result.transcript);
-      if (candidate === null) continue;
+      if (candidate === null) {
+        lastCandidateRejected = false;
+        continue;
+      }
 
       // §10: never store an ambiguous number silently — read it back first.
       await waitIfPaused();
@@ -155,7 +213,23 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
       if (!alive()) return;
       const confirmResult = await listen(generation);
       if (!alive()) return;
-      if (confirmResult && isAffirmative(confirmResult.transcript)) quantity = candidate;
+      if (confirmResult && isAffirmative(confirmResult.transcript)) {
+        quantity = candidate;
+      } else {
+        // The confirm prompt itself invites "say the number again" as an
+        // alternative to the word "yes" — so a restated number (the SAME
+        // one, most often, since that's the natural way to confirm a
+        // number in speech) has to be accepted here too. Without this, a
+        // farmer who answers exactly as instructed loops forever: nothing
+        // they say is ever "yes", so nothing is ever confirmed (§ the bug
+        // this fixes — confirmed by a real farmer hitting it on "20 kg").
+        const restated = confirmResult ? normalizeQuantity(confirmResult.transcript) : null;
+        if (restated !== null) {
+          quantity = restated;
+        } else {
+          lastCandidateRejected = true;
+        }
+      }
     }
     if (quantity === null) {
       setCurrentStep(null);
@@ -247,11 +321,12 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
     provider.cancelSpeech();
     pausedRef.current = false;
     resumeWaiters.current.splice(0).forEach((resolve) => resolve());
+    releaseMicTapWait(); // a wait for a tap that will now never come
     setRunning(false);
     setPaused(false);
     setPhase('idle');
     setCurrentStep(null);
-  }, [provider]);
+  }, [provider, releaseMicTapWait]);
 
   const pause = useCallback(() => {
     if (!running) return;
@@ -290,6 +365,7 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
       resume,
       repeat,
       stop,
+      tapMic,
     }),
     [
       provider,
@@ -305,6 +381,7 @@ export function useVoiceBooking(options: UseVoiceBookingOptions): VoiceBookingSt
       resume,
       repeat,
       stop,
+      tapMic,
     ],
   );
 }

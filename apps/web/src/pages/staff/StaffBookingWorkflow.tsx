@@ -141,19 +141,7 @@ function StepPanel({
 
   switch (booking.state) {
     case 'BOOKED':
-      return (
-        <Panel title={t('ops.step.arrival')}>
-          <p className="text-sm text-stone-600">{t('ops.step.arrivalHint')}</p>
-          <button
-            type="button"
-            className="btn-primary mt-4"
-            disabled={busy}
-            onClick={() => void act('arrive')}
-          >
-            {t('ops.action.markArrived')}
-          </button>
-        </Panel>
-      );
+      return <ArrivalPanel busy={busy} act={act} />;
 
     case 'ARRIVED':
       return (
@@ -569,6 +557,51 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
       <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+/**
+ * Arrival now requires the farmer's own code, read aloud by them — a click
+ * alone is no longer proof anyone is actually standing at the centre. A
+ * wrong code surfaces through the parent's own `ErrorPanel` (act() already
+ * routes every failure there), so this only needs the input and the ask.
+ */
+function ArrivalPanel({
+  busy,
+  act,
+}: {
+  busy: boolean;
+  act: (path: string, body?: unknown) => Promise<void>;
+}): JSX.Element {
+  const t = useT();
+  const [otp, setOtp] = useState('');
+
+  return (
+    <Panel title={t('ops.step.arrival')}>
+      <p className="text-sm text-stone-600">{t('ops.step.arrivalHint')}</p>
+      <label htmlFor="arrival-otp" className="field-label mt-3 block">
+        {t('ops.field.arrivalOtp')}
+      </label>
+      <input
+        id="arrival-otp"
+        className="field-input mt-1 font-mono text-lg tracking-widest"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={8}
+        value={otp}
+        onChange={(event) => setOtp(event.target.value)}
+        placeholder={t('ops.field.arrivalOtpPlaceholder')}
+        autoFocus
+      />
+      <button
+        type="button"
+        className="btn-primary mt-4"
+        disabled={busy || otp.trim().length === 0}
+        onClick={() => void act('arrive', { otp: otp.trim() })}
+      >
+        {t('ops.action.markArrived')}
+      </button>
+    </Panel>
   );
 }
 

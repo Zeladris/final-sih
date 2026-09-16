@@ -132,14 +132,15 @@ export async function getBooking(req: Request, res: Response): Promise<void> {
 export async function postArrive(req: Request, res: Response): Promise<void> {
   const auth = authOf(req);
   const bookingId = req.params.bookingId as string;
+  const { otp } = req.body as { otp: string };
 
-  const booking = await markArrived(auth, bookingId);
+  const booking = await markArrived(auth, bookingId, otp);
 
   await recordAudit(req, {
     action: 'BOOKING_ARRIVED',
     entityType: 'bookings',
     entityId: bookingId,
-    metadata: { bookingReference: booking.bookingReference },
+    metadata: { bookingReference: booking.bookingReference, arrivalOtpVerified: true },
   });
 
   res.json({ booking });

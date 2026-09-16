@@ -13,6 +13,7 @@ import { farmerRouter, referenceRouter } from './routes/farmer.js';
 import { staffRouter } from './routes/staff.js';
 import { adminRouter, districtAdminRouter, stateAdminRouter } from './routes/admin.js';
 import { locationRouter } from './routes/location.js';
+import { voiceRouter } from './routes/voice.js';
 import { farmerMessagesRouter } from './routes/farmerMessages.js';
 import { supportRouter } from './routes/support.js';
 import { governmentSupportRouter } from './routes/governmentSupport.js';
@@ -22,6 +23,7 @@ import {
 } from './services/dashboard/summaryProviders.js';
 import { SupabaseNotificationProvider } from './services/notifications/notificationService.js';
 import { webhookRouter } from './routes/webhooks.js';
+import { ivrRouter } from './routes/ivr.js';
 import { SupabaseBookingProvider } from './services/dashboard/farmerBookingProvider.js';
 
 // Load the global Express type augmentation for req.auth / req.requestId.
@@ -78,6 +80,10 @@ export function createApp(): Express {
   // mounted before JSON parsing (Phase 8 §37).
   app.use('/api/payments/webhooks', generalLimiter, express.raw({ type: '*/*', limit: '256kb' }), webhookRouter);
 
+  // Twilio POSTs application/x-www-form-urlencoded, not JSON (Phase 9 IVR) —
+  // mounted before the global JSON parser for the same reason as above.
+  app.use('/api/ivr', generalLimiter, ivrRouter);
+
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
   app.use(generalLimiter);
 
@@ -85,6 +91,7 @@ export function createApp(): Express {
   app.use('/api/auth', authRouter);
   app.use('/api/reference', referenceRouter);
   app.use('/api/location', locationRouter);
+  app.use('/api/voice', voiceRouter);
   app.use('/api/farmer', farmerRouter);
   app.use('/api/staff', staffRouter);
   app.use('/api/admin', adminRouter);

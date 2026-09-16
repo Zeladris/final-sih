@@ -12,7 +12,7 @@ import type {
 import { conflict, notFound, validationError } from '../../lib/errors.js';
 import * as ops from '../../repositories/operationsRepository.js';
 import * as status from '../../repositories/statusRepository.js';
-import { markArrived, single } from '../procurement/operationsService.js';
+import { single } from '../procurement/operationsService.js';
 import type { AuthContext } from '../../types/request.js';
 
 /**
@@ -80,6 +80,12 @@ export async function getFarmerStatus(
     queuePosition: queuePublished ? (operation?.queue_position ?? null) : null,
     estimatedWaitMinutes: queuePublished ? (operation?.estimated_wait_minutes ?? null) : null,
     queueUpdatedAt: queuePublished ? (operation?.queue_updated_at ?? null) : null,
+
+    // Nothing left to show once arrival is confirmed, or once the booking
+    // is past the point arrival is even meaningful (cancelled/completed/
+    // no-show never reach ARRIVED at all).
+    arrivalCode:
+      booking.status === 'BOOKED' && !booking.arrival_otp_verified_at ? booking.arrival_otp_code : null,
 
     centreName: centre?.name ?? '',
     centreVillage: centre?.village ?? null,
@@ -153,6 +159,11 @@ export async function getFarmerStatusHistory(
  * that records it.
  */
 const STEP_FOR: Partial<Record<FarmerProcurementStatus, string>> = {
+  // Arrival now needs evidence too: the farmer's own arrival code (§ arrival
+  // OTP). It used to be a direct one-click transition (see the removed
+  // special case below); now it belongs in this table like every other
+  // evidence-requiring move.
+  ARRIVED: 'arrive',
   // Check in, then verify the produce: that opens the pre-procurement check.
   PRE_PROCUREMENT_CHECK: 'verify-crop',
   // The official quality result is what puts a farmer in the queue.
@@ -182,10 +193,6 @@ export async function staffTransition(
 
   if (!canTransitionFarmerStatus(from, to)) {
     throw conflict(`A booking cannot move from ${from} to ${to}.`, { from, to });
-  }
-
-  if (from === 'SLOT_BOOKED' && to === 'ARRIVED') {
-    return markArrived(auth, bookingId);
   }
 
   const step = STEP_FOR[to];

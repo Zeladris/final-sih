@@ -50,6 +50,30 @@ const envSchema = z
      *  set this before sending it any real traffic. */
     NOMINATIM_USER_AGENT: z.string().min(3).default('KisanSetu-Procurement/1.0'),
 
+    // --- Bhashini ASR/TTS for voice booking (Phase 9). Optional: unset means
+    // voice booking runs on the browser's own speech engine instead — see
+    // apps/web/.../providers/browserSpeechProvider.ts. USER_ID and API_KEY
+    // come from a Bhashini/MeitY account; PIPELINE_ID defaults to the public
+    // ASR+Translation+TTS pipeline used across Bhashini's own sample apps.
+    BHASHINI_USER_ID: z.string().min(1).optional(),
+    BHASHINI_API_KEY: z.string().min(1).optional(),
+    BHASHINI_PIPELINE_ID: z.string().min(1).default('64392f96daac500b55c543cd'),
+    BHASHINI_CONFIG_URL: z
+      .string()
+      .url()
+      .default('https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline'),
+    BHASHINI_TIMEOUT_MS: z.coerce.number().int().positive().max(60_000).default(15_000),
+
+    // --- Twilio IVR: phone-call booking (Phase 9). Optional: unset means the
+    // /api/ivr/voice webhook still runs (useful for local testing with curl)
+    // but never verifies Twilio's request signature — see
+    // services/ivr/twilioSignature.ts. TWILIO_PHONE_NUMBER is the number
+    // farmers actually call; recorded nowhere server-side, useful only for
+    // README/operator reference.
+    TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+    TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+    TWILIO_PHONE_NUMBER: z.string().min(1).optional(),
+
     // --- Weather context for pre-arrival assessment (§7). Optional in every
     // sense: 'none' disables it, and a provider failure never blocks booking.
     // open-meteo needs no key and no account.
@@ -129,6 +153,22 @@ const envSchema = z
           message: `${key} contains the service-role key. That value would be shipped to every browser. Remove it.`,
         });
       }
+    }
+
+    if (Boolean(env.TWILIO_ACCOUNT_SID) !== Boolean(env.TWILIO_AUTH_TOKEN)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['TWILIO_AUTH_TOKEN'],
+        message: 'TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set together, or not at all.',
+      });
+    }
+
+    if (Boolean(env.BHASHINI_USER_ID) !== Boolean(env.BHASHINI_API_KEY)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['BHASHINI_API_KEY'],
+        message: 'BHASHINI_USER_ID and BHASHINI_API_KEY must be set together, or not at all.',
+      });
     }
 
     try {

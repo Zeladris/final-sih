@@ -293,6 +293,7 @@ interface BookingJoinRow {
   storage_location_text: string | null;
   storage_place_name: string | null;
   storage_latitude: string | number | null;
+  storage_longitude: string | number | null;
   produce_photo_path: string | null;
   storage_duration_band: StorageDurationBand | null;
   storage_type: StorageType | null;
@@ -307,7 +308,7 @@ interface BookingJoinRow {
 
 const BOOKING_SELECT =
   'id, booking_reference, crop_id, crop, expected_quantity_kg, quantity_unit, harvest_date, ' +
-  'storage_location_text, storage_place_name, storage_latitude, produce_photo_path, ' +
+  'storage_location_text, storage_place_name, storage_latitude, storage_longitude, produce_photo_path, ' +
   'storage_duration_band, storage_type, quality_prediction_id, ' +
   'centre_id, slot_id, status, procurement_status, created_at, cancelled_at';
 
@@ -345,6 +346,8 @@ async function hydrate(db: SupabaseClient, rows: BookingJoinRow[]): Promise<Farm
       storageLocationText: row.storage_location_text,
       storagePlaceName: row.storage_place_name,
       hasStorageCoordinates: row.storage_latitude !== null,
+      storageLatitude: row.storage_latitude === null ? null : Number(row.storage_latitude),
+      storageLongitude: row.storage_longitude === null ? null : Number(row.storage_longitude),
       storageDurationBand: row.storage_duration_band,
       storageType: row.storage_type,
       centreId: row.centre_id,

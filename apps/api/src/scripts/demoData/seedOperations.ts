@@ -112,9 +112,23 @@ async function bookDemoSlot(
   return booking.id;
 }
 
+/** The farmer-only arrival code (§ arrival OTP) — the seed reads it directly
+ *  with admin access, the same way it stands in for an interactive session
+ *  everywhere else in this file; a real staff login never sees this value,
+ *  only the farmer's own app does. */
+async function arrivalOtpFor(bookingId: string): Promise<string> {
+  const { data, error } = await supabaseAdminClient
+    .from('bookings')
+    .select('arrival_otp_code')
+    .eq('id', bookingId)
+    .single();
+  if (error || !data) throw new Error(`Could not read arrival_otp_code for ${bookingId}: ${error?.message}`);
+  return (data as { arrival_otp_code: string }).arrival_otp_code;
+}
+
 /** Drives a booking BOOKED -> COMPLETED with a successful demo payment. History/analytics demo. */
 async function runToCompletion(bookingId: string, staffAuth: AuthContext): Promise<void> {
-  await ops.markArrived(staffAuth, bookingId);
+  await ops.markArrived(staffAuth, bookingId, await arrivalOtpFor(bookingId));
   await ops.checkIn(staffAuth, bookingId);
   await ops.verifyCrop(staffAuth, bookingId, { matches: true });
   await ops.recordQuality(staffAuth, bookingId, { result: 'PASSED' });
@@ -149,7 +163,7 @@ async function runToQueued(bookingId: string, staffAuth: AuthContext): Promise<v
   const current = await ops.single(staffAuth, bookingId);
   if (current.state !== 'BOOKED') return; // already progressed by an earlier run
 
-  await ops.markArrived(staffAuth, bookingId);
+  await ops.markArrived(staffAuth, bookingId, await arrivalOtpFor(bookingId));
   await ops.checkIn(staffAuth, bookingId);
   await ops.verifyCrop(staffAuth, bookingId, { matches: true });
   await ops.recordQuality(staffAuth, bookingId, { result: 'PASSED' });

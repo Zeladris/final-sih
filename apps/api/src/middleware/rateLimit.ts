@@ -63,3 +63,5 @@ export const documentUploadLimiter = makeLimiter(RATE_LIMITS.documentUpload, 'do
 export const verificationLimiter = makeLimiter(RATE_LIMITS.verificationSubmit, 'verificationSubmit');
 export const paymentLimiter = makeLimiter(RATE_LIMITS.paymentAction, 'paymentAction');
 export const locationSearchLimiter = makeLimiter(RATE_LIMITS.locationSearch, 'locationSearch');
+export const voiceLimiter = makeLimiter(RATE_LIMITS.voice, 'voice');
+export const arrivalOtpLimiter = makeLimiter(RATE_LIMITS.arrivalOtp, 'arrivalOtp');

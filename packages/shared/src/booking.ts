@@ -174,6 +174,11 @@ export interface FarmerBooking {
   storageLocationText: string | null;
   storagePlaceName: string | null;
   hasStorageCoordinates: boolean;
+  /** The actual coordinates behind `hasStorageCoordinates` (Phase 13 §1) — so
+   *  a farmer's next booking can offer "same as last time" instead of asking
+   *  for GPS/search again from scratch. Null wherever the boolean is false. */
+  storageLatitude: number | null;
+  storageLongitude: number | null;
   storageDurationBand: StorageDurationBand | null;
   storageType: StorageType | null;
 
@@ -216,12 +221,13 @@ export interface CreateBookingRequest {
   /** Generated once when the review screen opens, so a retry is safe (§51). */
   idempotencyKey: string;
   /**
-   * How the farmer filled this in (Phase 9). Observability only — it changes
-   * nothing about validation, eligibility or persistence, and voice gets no
-   * queue or booking advantage from it. Defaults to 'standard' so an older
-   * client needs no change.
+   * How the farmer filled this in (Phase 9; 'ivr' added for the phone-call
+   * booking flow). Observability only — it changes nothing about validation,
+   * eligibility or persistence, and none of these get a queue or booking
+   * advantage from it. Defaults to 'standard' so an older client needs no
+   * change.
    */
-  bookingMethod?: 'standard' | 'voice';
+  bookingMethod?: 'standard' | 'voice' | 'ivr';
 }
 
 /** Quantity bounds. Generous, because a co-operative delivery can be large. */

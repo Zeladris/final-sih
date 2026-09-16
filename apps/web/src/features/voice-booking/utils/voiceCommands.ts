@@ -1,6 +1,28 @@
-const AFFIRMATIVE = [/\byes\b/i, /\bconfirm\b/i, /\bok(ay)?\b/i, /ஆம்/, /உறுதி/, /சரி/];
+/**
+ * "Yes"/"confirm"/"okay" in every language voice booking actually offers
+ * (§22, §34) — English, Tamil, Kannada, Hindi and Malayalam. Missing any of
+ * the five meant a farmer using that language could never confirm a
+ * quantity by voice: nothing they said would ever match, the loop would
+ * treat every attempt as a rejection, and after 3 tries the whole voice
+ * session would silently give up and fall back to the manual form.
+ */
+const AFFIRMATIVE = [
+  /\byes\b/i,
+  /\bconfirm\b/i,
+  /\bok(ay)?\b/i, // English
+  /ஆம்/,
+  /உறுதி/,
+  /சரி/, // Tamil
+  /ಹೌದು/,
+  /ಸರಿ/, // Kannada
+  /हाँ/,
+  /हां/,
+  /ठीक/,
+  /सही/, // Hindi
+  /അതെ/,
+  /ശരി/, // Malayalam
+];
 
-/** "yes" / "confirm" / "ஆம்" / "உறுதி", in either language (§22). */
 export function isAffirmative(transcript: string): boolean {
   return AFFIRMATIVE.some((pattern) => pattern.test(transcript));
 }
