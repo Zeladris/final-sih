@@ -87,6 +87,12 @@ export function FarmerBooking(): JSX.Element {
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('crop');
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  // Set only by "Edit" from the Review step (§ toggle back and forth without
+  // re-answering what's already answered). A step that invalidates later
+  // answers (crop, centre) clears it, because those genuinely do need
+  // re-collecting; a step that doesn't (details, location, photo) honours it
+  // by returning straight to Review instead of continuing the normal chain.
+  const [returnToReview, setReturnToReview] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
@@ -139,11 +145,13 @@ export function FarmerBooking(): JSX.Element {
       .catch(setCropsError);
   }, []);
 
-  // Reuses the farmer's last storage answer — or, for a first-ever booking,
-  // their registered address — so the location step doesn't start blank
-  // every single time ("don't ask again unless they need to change"). Purely
-  // additive: on any failure this just leaves the step starting blank, same
-  // as before this existed, so it never blocks booking.
+  // Reuses the farmer's registered address — the one stable answer they've
+  // already given — so the location step doesn't start blank every single
+  // time ("don't ask again unless they need to change"). Only when
+  // registration has no address at all does this fall back to whatever was
+  // typed for their last booking. Purely additive: on any failure this just
+  // leaves the step starting blank, same as before this existed, so it never
+  // blocks booking.
   const [locationPrefillSource, setLocationPrefillSource] = useState<'lastBooking' | 'profile' | null>(
     null,
   );
@@ -151,51 +159,51 @@ export function FarmerBooking(): JSX.Element {
     let cancelled = false;
 
     api
-      .get<{ bookings: Booking[] }>('/api/farmer/bookings')
-      .then((data) => {
-        if (cancelled) return null;
-        const last = data.bookings[0];
-        if (!last?.storageLocationText) return null;
+      .get<RegistrationView>('/api/farmer/registration')
+      .then((view) => {
+        if (cancelled) return true;
+        const address = [view.farmer.village, view.farmer.addressLine1, view.farmer.addressLine2]
+          .filter(Boolean)
+          .join(', ');
+        if (!address) return false;
 
         setDraft((current) =>
-          current.storageText || current.coords
+          current.storageText
             ? current
             : {
                 ...current,
-                storageText: last.storageLocationText as string,
-                storageDurationBand: last.storageDurationBand,
-                storageType: last.storageType,
+                storageText: address,
                 coords:
-                  last.storageLatitude !== null && last.storageLongitude !== null
-                    ? { latitude: last.storageLatitude, longitude: last.storageLongitude }
+                  view.farmer.latitude !== null && view.farmer.longitude !== null
+                    ? { latitude: view.farmer.latitude, longitude: view.farmer.longitude }
                     : current.coords,
               },
         );
-        setLocationPrefillSource('lastBooking');
-        return last;
+        setLocationPrefillSource('profile');
+        return true;
       })
-      .then((last) => {
-        if (cancelled || last) return; // unmounted, or already prefilled from a past booking
-        return api.get<RegistrationView>('/api/farmer/registration').then((view) => {
+      .then((filled) => {
+        if (cancelled || filled) return; // unmounted, or already prefilled from the profile
+        return api.get<{ bookings: Booking[] }>('/api/farmer/bookings').then((data) => {
           if (cancelled) return;
-          const address = [view.farmer.village, view.farmer.addressLine1, view.farmer.addressLine2]
-            .filter(Boolean)
-            .join(', ');
-          if (!address) return;
+          const last = data.bookings[0];
+          if (!last?.storageLocationText) return;
 
           setDraft((current) =>
-            current.storageText
+            current.storageText || current.coords
               ? current
               : {
                   ...current,
-                  storageText: address,
+                  storageText: last.storageLocationText as string,
+                  storageDurationBand: last.storageDurationBand,
+                  storageType: last.storageType,
                   coords:
-                    view.farmer.latitude !== null && view.farmer.longitude !== null
-                      ? { latitude: view.farmer.latitude, longitude: view.farmer.longitude }
+                    last.storageLatitude !== null && last.storageLongitude !== null
+                      ? { latitude: last.storageLatitude, longitude: last.storageLongitude }
                       : current.coords,
                 },
           );
-          setLocationPrefillSource('profile');
+          setLocationPrefillSource('lastBooking');
         });
       })
       .catch(() => undefined);
@@ -324,8 +332,10 @@ export function FarmerBooking(): JSX.Element {
           selected={draft.crop}
           onSelect={(crop) => {
             // Changing crop invalidates everything downstream: a centre may
-            // not accept the new one.
+            // not accept the new one, so the rest genuinely does need
+            // re-collecting — this can't shortcut back to Review.
             update({ crop, centre: null, date: null, slot: null });
+            setReturnToReview(false);
             setStep('details');
           }}
         />
@@ -336,7 +346,14 @@ export function FarmerBooking(): JSX.Element {
           draft={draft}
           onChange={update}
           onBack={() => setStep('crop')}
-          onNext={() => setStep('location')}
+          onNext={() => {
+            if (returnToReview) {
+              setReturnToReview(false);
+              setStep('review');
+            } else {
+              setStep('location');
+            }
+          }}
         />
       ) : null}
 
@@ -347,7 +364,14 @@ export function FarmerBooking(): JSX.Element {
           onClearPrefillSource={() => setLocationPrefillSource(null)}
           onChange={update}
           onBack={() => setStep('details')}
-          onNext={() => setStep('photo')}
+          onNext={() => {
+            if (returnToReview) {
+              setReturnToReview(false);
+              setStep('review');
+            } else {
+              setStep('photo');
+            }
+          }}
         />
       ) : null}
 
@@ -356,7 +380,14 @@ export function FarmerBooking(): JSX.Element {
           draft={draft}
           onChange={update}
           onBack={() => setStep('location')}
-          onNext={() => setStep('centre')}
+          onNext={() => {
+            if (returnToReview) {
+              setReturnToReview(false);
+              setStep('review');
+            } else {
+              setStep('centre');
+            }
+          }}
         />
       ) : null}
 
@@ -369,7 +400,10 @@ export function FarmerBooking(): JSX.Element {
           voiceLanguage={voiceLanguage}
           onBack={() => setStep('photo')}
           onSelect={(centre) => {
+            // Changing centre invalidates date and slot the same way —
+            // those two also can't shortcut back to Review.
             update({ centre, date: null, slot: null });
+            setReturnToReview(false);
             setStep('date');
           }}
         />
@@ -404,7 +438,11 @@ export function FarmerBooking(): JSX.Element {
         <ReviewStep
           draft={draft}
           busy={busy}
-          onEdit={setStep}
+          onBack={() => setStep('slot')}
+          onEdit={(target) => {
+            setReturnToReview(true);
+            setStep(target);
+          }}
           onConfirm={() => void confirm()}
         />
       ) : null}
@@ -1255,11 +1293,13 @@ function AssessmentCard({
 function ReviewStep({
   draft,
   busy,
+  onBack,
   onEdit,
   onConfirm,
 }: {
   draft: Draft;
   busy: boolean;
+  onBack: () => void;
   onEdit: (step: Step) => void;
   onConfirm: () => void;
 }): JSX.Element {
@@ -1324,10 +1364,17 @@ function ReviewStep({
         />
       </dl>
 
-      {/* Unambiguous final action — not "Continue" or "Submit" (§28). */}
-      <button type="button" className="btn-primary mt-5" disabled={busy} onClick={onConfirm}>
-        {busy ? t('booking.review.confirming') : t('booking.review.confirm')}
-      </button>
+      {/* Review is a step like any other — Back works here too, not just a
+          per-field Edit jump (§ toggle back and forth through every step). */}
+      <div className="mt-5 flex gap-2">
+        <button type="button" className="btn-secondary" onClick={onBack} disabled={busy}>
+          {t('common.back')}
+        </button>
+        {/* Unambiguous final action — not "Continue" or "Submit" (§28). */}
+        <button type="button" className="btn-primary flex-1" disabled={busy} onClick={onConfirm}>
+          {busy ? t('booking.review.confirming') : t('booking.review.confirm')}
+        </button>
+      </div>
 
       <p className="mt-2 text-center text-xs text-stone-500">{t('booking.review.note')}</p>
     </section>

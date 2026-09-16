@@ -55,19 +55,21 @@ export function FarmerHeader({
   return (
     <header className="border-b border-stone-200 bg-white">
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <Link to="/farmer/dashboard" className="flex flex-col">
-          <span className="text-xs font-semibold uppercase tracking-wide text-harvest-700">
-            {t('app.name')}
+        <Link to="/farmer/dashboard" className="flex items-center gap-2.5">
+          <span className="brand-mark">KS</span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm font-bold tracking-wide text-stone-900">{t('app.name')}</span>
+            <span className="text-xs text-stone-500">{t('app.farmerPortal')}</span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <LanguageSwitcher compact />
 
           {onNotifications ? (
             <span
               aria-hidden="true"
-              className="relative rounded-lg border border-harvest-500 bg-harvest-50 px-3 py-1.5 text-sm text-harvest-800"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-harvest-500 bg-harvest-50 text-sm text-harvest-800"
             >
               🔔
             </span>
@@ -79,7 +81,7 @@ export function FarmerHeader({
                   ? t('dashboard.notifications.unread', { count: effectiveUnread })
                   : t('dashboard.notifications.title')
               }
-              className="relative rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 transition hover:bg-stone-50"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 text-sm text-stone-700 transition hover:bg-stone-50"
             >
               <span aria-hidden="true">🔔</span>
               {effectiveUnread > 0 ? (
@@ -93,30 +95,19 @@ export function FarmerHeader({
             </Link>
           )}
 
-          {!onSupport ? (
-            <Link
-              to="/farmer/support"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('dashboard.nav.support')}
-            </Link>
-          ) : null}
-
-          {!onProfile ? (
-            <Link
-              to="/farmer/profile"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('dashboard.nav.profile')}
-            </Link>
-          ) : (
-            <Link
-              to="/farmer/dashboard"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('dashboard.nav.dashboard')}
-            </Link>
-          )}
+          {/* Dashboard, Support and Profile are always the same three boxes
+              in the same order — never hidden or swapped for one another —
+              so where to tap next never shifts once a farmer has learned it.
+              The current page is simply marked, not removed. */}
+          <NavPill to="/farmer/dashboard" active={location.pathname === '/farmer/dashboard'}>
+            {t('dashboard.nav.dashboard')}
+          </NavPill>
+          <NavPill to="/farmer/support" active={onSupport}>
+            {t('dashboard.nav.support')}
+          </NavPill>
+          <NavPill to="/farmer/profile" active={onProfile}>
+            {t('dashboard.nav.profile')}
+          </NavPill>
 
           <button type="button" className="btn-secondary" onClick={() => void signOut()}>
             {t('common.signOut')}
@@ -124,5 +115,29 @@ export function FarmerHeader({
         </div>
       </div>
     </header>
+  );
+}
+
+function NavPill({
+  to,
+  active,
+  children,
+}: {
+  to: string;
+  active: boolean;
+  children: React.ReactNode;
+}): JSX.Element {
+  return (
+    <Link
+      to={to}
+      aria-current={active ? 'page' : undefined}
+      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+        active
+          ? 'border-harvest-500 bg-harvest-50 text-harvest-800'
+          : 'border-stone-300 text-stone-700 hover:bg-stone-50'
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

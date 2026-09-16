@@ -15,12 +15,12 @@ export function PrimaryActionCard({ action }: { action: PrimaryAction }): JSX.El
 
   if (!action.available) {
     return (
-      <section className="card">
+      <section className="card flex flex-col items-center justify-center text-center">
         <button
           type="button"
           disabled
           aria-disabled="true"
-          className="btn-primary w-full"
+          className="btn-primary py-4 text-lg"
         >
           {t(action.labelKey)}
         </button>
@@ -32,8 +32,8 @@ export function PrimaryActionCard({ action }: { action: PrimaryAction }): JSX.El
   }
 
   return (
-    <section className="card">
-      <Link to={action.to ?? '/'} className="btn-primary block text-center">
+    <section className="card flex items-center justify-center">
+      <Link to={action.to ?? '/'} className="btn-primary block py-4 text-center text-lg">
         {t(action.labelKey)}
       </Link>
     </section>

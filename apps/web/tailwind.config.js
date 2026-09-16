@@ -15,6 +15,13 @@ export default {
           700: '#365c28',
           800: '#2d4a24',
           900: '#263f20',
+          950: '#1c2f18',
+        },
+        cream: {
+          DEFAULT: '#faf6ec',
+          50: '#fdfbf6',
+          100: '#faf6ec',
+          200: '#f2ead4',
         },
       },
       fontFamily: {

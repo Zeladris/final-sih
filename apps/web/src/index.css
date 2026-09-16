@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply bg-stone-50 text-stone-900 antialiased;
+    @apply bg-cream-100 text-stone-900 antialiased;
   }
 
   /* Many farmers will use this one-handed on a phone in a field; keep hit
@@ -44,17 +44,24 @@
   }
 
   .btn-primary {
-    @apply w-full rounded-lg bg-harvest-700 px-4 py-3 text-base font-semibold text-white
+    @apply w-full rounded-full bg-harvest-700 px-4 py-3 text-base font-semibold text-white
            shadow-sm transition hover:bg-harvest-800
            disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500;
   }
 
   .btn-secondary {
-    @apply rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium
+    @apply rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium
            text-stone-700 transition hover:bg-stone-50;
   }
 
   .card {
-    @apply rounded-xl border border-stone-200 bg-white p-5 shadow-sm;
+    @apply rounded-2xl border border-stone-200 bg-white p-6 shadow-sm;
+  }
+
+  /* The "KS" brand mark used beside the wordmark in the header and, in a
+     gold-on-dark variant, on the login page's hero panel. */
+  .brand-mark {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-harvest-900
+           text-xs font-bold tracking-wide text-cream-50;
   }
 }

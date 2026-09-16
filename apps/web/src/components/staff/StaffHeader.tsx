@@ -38,39 +38,24 @@ export function StaffHeader({ centre }: { centre?: StaffCentreSummary }): JSX.El
         <div className="flex flex-wrap items-center gap-2">
           <LanguageSwitcher compact />
 
-          {location.pathname !== '/staff/payments' ? (
-            <Link
-              to="/staff/payments"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('payment.nav')}
-            </Link>
-          ) : null}
-
-          {location.pathname !== '/staff/queue' ? (
-            <Link
-              to="/staff/queue"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('queue.nav')}
-            </Link>
-          ) : null}
-
-          {location.pathname !== '/support' ? (
-            <Link
-              to="/support"
-              className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-            >
-              {t('gov.tab.grievances')}
-            </Link>
-          ) : null}
-
-          <Link
-            to={onProfile ? '/staff/dashboard' : '/staff/profile'}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-          >
-            {onProfile ? t('dashboard.nav.dashboard') : t('dashboard.nav.profile')}
-          </Link>
+          {/* Fixed set of boxes in a fixed order — never hidden or swapped
+              for one another — so staff always tap the same spot for the
+              same destination. The current page is marked, not removed. */}
+          <NavPill to="/staff/dashboard" active={location.pathname === '/staff/dashboard'}>
+            {t('dashboard.nav.dashboard')}
+          </NavPill>
+          <NavPill to="/staff/payments" active={location.pathname === '/staff/payments'}>
+            {t('payment.nav')}
+          </NavPill>
+          <NavPill to="/staff/queue" active={location.pathname === '/staff/queue'}>
+            {t('queue.nav')}
+          </NavPill>
+          <NavPill to="/support" active={location.pathname === '/support'}>
+            {t('gov.tab.grievances')}
+          </NavPill>
+          <NavPill to="/staff/profile" active={onProfile}>
+            {t('dashboard.nav.profile')}
+          </NavPill>
 
           <button type="button" className="btn-secondary" onClick={() => void signOut()}>
             {t('common.signOut')}
@@ -78,5 +63,29 @@ export function StaffHeader({ centre }: { centre?: StaffCentreSummary }): JSX.El
         </div>
       </div>
     </header>
+  );
+}
+
+function NavPill({
+  to,
+  active,
+  children,
+}: {
+  to: string;
+  active: boolean;
+  children: React.ReactNode;
+}): JSX.Element {
+  return (
+    <Link
+      to={to}
+      aria-current={active ? 'page' : undefined}
+      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+        active
+          ? 'border-harvest-500 bg-harvest-50 text-harvest-800'
+          : 'border-stone-300 text-stone-700 hover:bg-stone-50'
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

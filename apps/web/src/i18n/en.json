@@ -1,6 +1,7 @@
 {
   "app.name": "KisanSetu",
   "app.tagline": "Paddy procurement, without the queue",
+  "app.farmerPortal": "Farmer portal",
   "common.continue": "Continue",
   "common.back": "Back",
   "common.next": "Next",

@@ -23,7 +23,7 @@ function ProblemCard({
   children: React.ReactNode;
 }): JSX.Element {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-cream-100 px-4 py-10">
       <div className="card w-full max-w-md text-center">
         <div className="flex justify-end">
           <LanguageSwitcher compact />

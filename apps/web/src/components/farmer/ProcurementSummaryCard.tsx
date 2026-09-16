@@ -109,12 +109,12 @@ function BookingDetail({ booking }: { booking: BookingSummaryItem }): JSX.Elemen
   return (
     <>
       {/* Status first and compact; the full journey is on the status page (§18). */}
-      <div className="mt-3 rounded-lg bg-harvest-50 px-3 py-2">
-        <p className="text-sm font-semibold text-harvest-900">
+      <div className="mt-3">
+        <span className="inline-block rounded-full bg-harvest-50 px-3 py-1 text-sm font-semibold text-harvest-900">
           {t(`status.farmer.${booking.farmerStatus}.label`)}
-        </p>
+        </span>
         {booking.queuePosition !== null || booking.estimatedWaitMinutes !== null ? (
-          <p className="text-xs text-harvest-900">
+          <p className="mt-1.5 text-xs text-stone-600">
             {[
               booking.queuePosition !== null
                 ? `${t('liveStatus.queuePosition')}: ${booking.queuePosition}`

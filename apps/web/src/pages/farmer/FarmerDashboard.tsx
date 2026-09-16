@@ -37,7 +37,7 @@ export function FarmerDashboard(): JSX.Element {
 
   if (state.status === 'ERROR') {
     return (
-      <div className="min-h-screen bg-stone-50">
+      <div className="min-h-screen bg-cream-100">
         <FarmerHeader />
         <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
           <ErrorPanel error={state.error} />
@@ -60,7 +60,7 @@ export function FarmerDashboard(): JSX.Element {
   const verified = data.verification.state === 'VERIFIED';
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-cream-100">
       <FarmerHeader unreadCount={data.notificationSummary.unreadCount} />
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
@@ -80,10 +80,18 @@ export function FarmerDashboard(): JSX.Element {
         ) : null}
 
         <WelcomeCard farmer={data.farmer} />
-        <VerificationStatusCard verification={data.verification} />
-        <PrimaryActionCard action={action} />
-        <ProcurementSummaryCard summary={data.bookingSummary} eligible={verified} />
-        <NotificationSummaryCard summary={data.notificationSummary} />
+
+        <div className="grid gap-4 md:grid-cols-5 md:items-start">
+          <div className="space-y-4 md:col-span-2">
+            <VerificationStatusCard verification={data.verification} />
+            <ProcurementSummaryCard summary={data.bookingSummary} eligible={verified} />
+          </div>
+          <div className="space-y-4 md:col-span-3">
+            <PrimaryActionCard action={action} />
+            <NotificationSummaryCard summary={data.notificationSummary} />
+          </div>
+        </div>
+
         <FarmerProfileSummary farmer={data.farmer} />
       </main>
     </div>
@@ -98,7 +106,7 @@ function DashboardSkeleton(): JSX.Element {
   const t = useT();
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-cream-100">
       <FarmerHeader />
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-6" aria-busy="true">
         <span className="sr-only" role="status">
