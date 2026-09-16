@@ -18,7 +18,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     envDir: rootDir,
-    server: { port: 5173, strictPort: true },
+    // DEMO: `host: true` binds to the LAN interface too (not just
+    // localhost), so other devices on the same WiFi can open this. Revert to
+    // `server: { port: 5173, strictPort: true }` after the demo.
+    server: { host: true, port: 5173, strictPort: true },
     build: { outDir: 'dist', sourcemap: mode !== 'production' },
   };
 });

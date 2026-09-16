@@ -17,6 +17,22 @@ const TONE: Record<FarmerProcurementStatus, string> = {
 };
 
 /**
+ * The three sub-states of being farmer-facing IN_QUEUE, purely a presentation
+ * split of the existing `queuePosition` figure — no new source of truth.
+ * `queuePosition` is only ever non-null once the operation reaches WAITING
+ * (see `apply_queue_snapshot`), which is exactly the IN_QUEUE farmer status,
+ * so this only ever applies there.
+ */
+type QueuePhase = 'WAITING' | 'APPROACHING' | 'NEXT';
+
+function queuePhaseFor(status: FarmerProcurementStatus, peopleAhead: number | null): QueuePhase | null {
+  if (status !== 'IN_QUEUE' || peopleAhead === null) return null;
+  if (peopleAhead === 0) return 'NEXT';
+  if (peopleAhead === 1) return 'APPROACHING';
+  return 'WAITING';
+}
+
+/**
  * What is happening now, in words (§5, §13).
  *
  * Queue figures appear only when the server supplies them. Until the queue
@@ -24,17 +40,25 @@ const TONE: Record<FarmerProcurementStatus, string> = {
  */
 export function CurrentStatusCard({ status }: { status: FarmerBookingStatus }): JSX.Element {
   const t = useT();
-  const hasQueue = status.queuePosition !== null || status.estimatedWaitMinutes !== null;
+  const peopleAhead = status.queuePosition !== null ? Math.max(0, status.queuePosition - 1) : null;
+  const queuePhase = queuePhaseFor(status.status, peopleAhead);
 
   return (
     <section className={`rounded-2xl border-2 p-4 ${TONE[status.status]}`} aria-live="polite">
       <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
         {t('liveStatus.current')}
       </p>
-      <h1 className="mt-1 text-xl font-semibold text-stone-900">
-        {t(`status.farmer.${status.status}.label`)}
-      </h1>
-      <p className="mt-1 text-sm text-stone-700">{t(`status.farmer.${status.status}.message`)}</p>
+
+      {queuePhase ? (
+        <QueuePhaseBanner phase={queuePhase} peopleAhead={peopleAhead!} />
+      ) : (
+        <>
+          <h1 className="mt-1 text-xl font-semibold text-stone-900">
+            {t(`status.farmer.${status.status}.label`)}
+          </h1>
+          <p className="mt-1 text-sm text-stone-700">{t(`status.farmer.${status.status}.message`)}</p>
+        </>
+      )}
 
       {status.reason ? (
         <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm text-stone-800">
@@ -42,28 +66,13 @@ export function CurrentStatusCard({ status }: { status: FarmerBookingStatus }): 
         </p>
       ) : null}
 
-      {hasQueue ? (
-        <dl className="mt-3 grid grid-cols-2 gap-3">
-          {status.queuePosition !== null ? (
-            <div className="rounded-lg bg-white/70 px-3 py-2">
-              {/* "Position 3" makes a farmer do the subtraction themselves;
-                  saying how many are ahead is the number they actually want
-                  (§ position 1 means 0 people ahead — you're next). */}
-              <dt className="text-xs text-stone-600">{t('liveStatus.peopleAhead')}</dt>
-              <dd className="text-2xl font-semibold text-stone-900">
-                {Math.max(0, status.queuePosition - 1)}
-              </dd>
-            </div>
-          ) : null}
-          {status.estimatedWaitMinutes !== null ? (
-            <div className="rounded-lg bg-white/70 px-3 py-2">
-              <dt className="text-xs text-stone-600">{t('liveStatus.estimatedWait')}</dt>
-              <dd className="text-2xl font-semibold text-stone-900">
-                {t('liveStatus.waitMinutes', { minutes: status.estimatedWaitMinutes })}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
+      {status.estimatedWaitMinutes !== null ? (
+        <div className="mt-3 inline-block rounded-lg bg-white/70 px-3 py-2">
+          <dt className="text-xs text-stone-600">{t('liveStatus.estimatedWait')}</dt>
+          <dd className="text-lg font-semibold text-stone-900">
+            {t('liveStatus.waitMinutes', { minutes: status.estimatedWaitMinutes })}
+          </dd>
+        </div>
       ) : null}
 
       {status.arrivalCode ? (
@@ -76,5 +85,33 @@ export function CurrentStatusCard({ status }: { status: FarmerBookingStatus }): 
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The prominent, farmer-only "how many ahead" banner (§ never a list of
+ * other farmers — this is a single count derived from the server's own
+ * queue_position for THIS booking, never anyone else's identity).
+ */
+function QueuePhaseBanner({ phase, peopleAhead }: { phase: QueuePhase; peopleAhead: number }): JSX.Element {
+  const t = useT();
+
+  if (phase === 'NEXT') {
+    return (
+      <div className="mt-1" aria-live="assertive">
+        <h1 className="text-2xl font-bold text-harvest-900">{t('liveStatus.queue.next.label')}</h1>
+        <p className="mt-1 text-sm font-medium text-harvest-800">{t('liveStatus.queue.next.message')}</p>
+      </div>
+    );
+  }
+
+  const label = phase === 'APPROACHING' ? t('liveStatus.queue.approaching.label') : t('liveStatus.queue.waiting.label', { count: peopleAhead });
+  const message = phase === 'APPROACHING' ? t('liveStatus.queue.approaching.message') : t('liveStatus.queue.waiting.message');
+
+  return (
+    <div className="mt-1">
+      <h1 className="text-xl font-semibold text-stone-900">{label}</h1>
+      <p className="mt-1 text-sm text-stone-700">{message}</p>
+    </div>
   );
 }

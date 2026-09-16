@@ -116,8 +116,11 @@ function BookingDetail({ booking }: { booking: BookingSummaryItem }): JSX.Elemen
         {booking.queuePosition !== null || booking.estimatedWaitMinutes !== null ? (
           <p className="mt-1.5 text-xs text-stone-600">
             {[
+              // Same "people ahead" framing as the full status page (§18) —
+              // showing the raw ordinal position here instead made this card
+              // and the status page disagree about the same booking.
               booking.queuePosition !== null
-                ? `${t('liveStatus.queuePosition')}: ${booking.queuePosition}`
+                ? `${t('liveStatus.peopleAhead')}: ${Math.max(0, booking.queuePosition - 1)}`
                 : null,
               booking.estimatedWaitMinutes !== null
                 ? t('liveStatus.waitMinutes', { minutes: booking.estimatedWaitMinutes })

@@ -3,6 +3,7 @@ import type { StaffPaymentView } from '@kisansetu/shared';
 import { isPaymentInFlight } from '@kisansetu/shared';
 import { api, ApiRequestError } from '../../lib/api.js';
 import { supabase } from '../../lib/supabase.js';
+import { randomUuid } from '../../lib/uuid.js';
 import { useI18n, useT } from '../../i18n/index.js';
 import { ErrorPanel } from '../../components/AppShell.js';
 import { formatDateTime, formatInr, formatKg } from './format.js';
@@ -88,7 +89,7 @@ export function StaffPaymentPanel({
 
   function keyFor(action: string): string {
     if (intentKey.current?.action !== action) {
-      intentKey.current = { action, key: crypto.randomUUID() };
+      intentKey.current = { action, key: randomUuid() };
     }
     return intentKey.current.key;
   }
