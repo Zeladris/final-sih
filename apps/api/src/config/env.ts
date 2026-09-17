@@ -12,7 +12,14 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().max(65535).default(4000),
-    FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+    // May be a comma-separated list (e.g. a deployed frontend plus a preview
+    // URL), so CORS can trust more than one origin without a code change.
+    FRONTEND_URL: z
+      .string()
+      .default('http://localhost:5173')
+      .refine((value) => value.split(',').every((url) => z.string().url().safeParse(url.trim()).success), {
+        message: 'FRONTEND_URL must be a URL, or a comma-separated list of URLs',
+      }),
 
     SUPABASE_URL: z.string().url({
       message: 'SUPABASE_URL must be your project URL, e.g. https://xxxx.supabase.co',

@@ -66,12 +66,11 @@ export function createApp(): Express {
 
   app.use(
     cors({
-      // DEMO: also trusts localhost:5173 alongside the configured
-      // FRONTEND_URL, so the presenter's own laptop can use either address
-      // while other devices on the LAN must use FRONTEND_URL (localhost
-      // never resolves to another machine, whatever the network). Revert to
-      // `origin: env.FRONTEND_URL` after the demo.
-      origin: [env.FRONTEND_URL, 'http://localhost:5173'],
+      // FRONTEND_URL may be a comma-separated list, so a deployed frontend
+      // and local dev can both reach this API without a code change per
+      // environment. localhost:5173 is always trusted alongside it so the
+      // presenter's own laptop works whichever address it uses.
+      origin: [...env.FRONTEND_URL.split(',').map((url) => url.trim()), 'http://localhost:5173'],
       credentials: false, // Bearer tokens, not cookies — nothing to send along.
       // Idempotency-Key: payment requests carry one so a retry is recognised (Phase 8 §16).
       allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', REQUEST_ID_HEADER],
