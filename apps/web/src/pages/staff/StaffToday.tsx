@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { isInProgress } from '@kisansetu/shared';
 import type { OperationalBooking } from '@kisansetu/shared';
@@ -8,6 +8,14 @@ import { StaffHeader } from '../../components/staff/StaffHeader.js';
 import { BookingCard } from '../../components/staff/BookingCard.js';
 import { ErrorPanel } from '../../components/AppShell.js';
 import { Spinner } from '../../components/Spinner.js';
+
+/** No realtime channel publishes booking_operations changes (only `bookings`
+ *  and `queue_centre_state` do), so this list — unlike the rest of the app —
+ *  has nothing to subscribe to. A short poll plus a refetch whenever the tab
+ *  comes back into view keeps it from going stale after another device (or
+ *  another staff member) processes an arrival, same fallback pattern already
+ *  used by useProcurementStatus for the farmer-facing status page. */
+const REFRESH_MS = 15_000;
 
 /**
  * Today's full operational list (§22).
@@ -20,14 +28,35 @@ export function StaffToday(): JSX.Element {
   const [bookings, setBookings] = useState<OperationalBooking[] | null>(null);
   const [error, setError] = useState<unknown>(null);
 
-  useEffect(() => {
-    api
-      .get<{ bookings: OperationalBooking[] }>('/api/staff/me/bookings/today')
-      .then((data) => setBookings(data.bookings))
-      .catch(setError);
+  const load = useCallback(async (): Promise<void> => {
+    try {
+      const data = await api.get<{ bookings: OperationalBooking[] }>('/api/staff/me/bookings/today');
+      setBookings(data.bookings);
+      setError(null);
+    } catch (cause) {
+      setError(cause);
+    }
   }, []);
 
-  if (error) {
+  useEffect(() => {
+    void load();
+
+    const timer = window.setInterval(() => void load(), REFRESH_MS);
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [load]);
+
+  // A background refresh failing keeps whatever list is already on screen —
+  // only a failure on the very first load (nothing to show yet) blanks the
+  // page, same principle as the farmer-facing status page's fallback poll.
+  if (error && !bookings) {
     return (
       <Shell>
         <ErrorPanel error={error} />
@@ -46,7 +75,11 @@ export function StaffToday(): JSX.Element {
   const inProgress = bookings
     .filter((booking) => isInProgress(booking.state))
     .sort((a, b) => (a.queuePosition ?? 999) - (b.queuePosition ?? 999));
-  const awaiting = bookings.filter((booking) => booking.state === 'BOOKED');
+  // Earliest slot first, so staff naturally work through arrivals in time
+  // order — "YYYY-MM-DD"/"HH:MM" both sort correctly as plain strings.
+  const awaiting = bookings
+    .filter((booking) => booking.state === 'BOOKED')
+    .sort((a, b) => (a.slotDate + a.slotStart).localeCompare(b.slotDate + b.slotStart));
   const done = bookings.filter((booking) =>
     ['COMPLETED', 'REJECTED', 'CANCELLED'].includes(booking.state),
   );

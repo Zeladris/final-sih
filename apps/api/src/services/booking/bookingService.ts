@@ -9,6 +9,7 @@ import {
   isEligibleToBook,
   MAX_QUANTITY_KG,
   MIN_QUANTITY_KG,
+  zonedInstant,
 } from '@kisansetu/shared';
 import type {
   AvailableDate,
@@ -21,6 +22,7 @@ import type {
   StorageDurationBand,
   StorageType,
 } from '@kisansetu/shared';
+import { env } from '../../config/env.js';
 import { conflict, forbidden, notFound, validationError } from '../../lib/errors.js';
 import { logger } from '../../lib/logger.js';
 import { supabaseAdminClient } from '../../lib/supabaseAdmin.js';
@@ -208,6 +210,15 @@ export async function listCentresForCrop(
   });
 }
 
+/**
+ * A same-day slot whose start time has already gone by is not bookable —
+ * only today needs this; every later date is entirely in the future no
+ * matter the wall-clock time (§ don't offer a 10am slot once it's 11am).
+ */
+function hasSlotStartPassed(slotDate: string, startTime: string): boolean {
+  return zonedInstant(slotDate, startTime, env.APP_TIMEZONE).getTime() <= Date.now();
+}
+
 /** Dates with at least one bookable slot (§21). */
 export async function listAvailableDates(
   db: SupabaseClient,
@@ -223,6 +234,7 @@ export async function listAvailableDates(
 
   for (const slot of slots) {
     if (slot.status !== 'OPEN' || slot.remainingCapacity === 0) continue;
+    if (hasSlotStartPassed(slot.slotDate, slot.startTime)) continue;
 
     const entry = byDate.get(slot.slotDate) ?? { slotCount: 0, remainingCapacity: 0 };
     entry.slotCount += 1;
@@ -239,7 +251,9 @@ export async function listAvailableDates(
  * Slots on one date.
  *
  * Full slots are returned too, marked full, so the farmer can see the day is
- * busy rather than wondering why a time is missing (§22).
+ * busy rather than wondering why a time is missing (§22). A same-day slot
+ * whose start time has already passed is left out entirely, though — that
+ * is not "full", it is simply no longer offerable.
  */
 export async function listSlotsForDate(
   db: SupabaseClient,
@@ -254,7 +268,10 @@ export async function listSlotsForDate(
   }
 
   const slots = await ops.listSlots(db, centreId, date, date);
-  return slots.filter((slot) => slot.status === 'OPEN' || slot.status === 'FULL');
+  return slots.filter(
+    (slot) =>
+      (slot.status === 'OPEN' || slot.status === 'FULL') && !hasSlotStartPassed(slot.slotDate, slot.startTime),
+  );
 }
 
 async function assertCentreAcceptsCrop(
@@ -454,6 +471,13 @@ export async function createBooking(
 
   if (slot.slot_date < today()) {
     throw conflict('That slot has already passed. Please choose another date.');
+  }
+
+  // A same-day slot whose start time has already gone by is not bookable —
+  // never trusted from the client, only what listSlotsForDate already
+  // filters out (§4 "a UI that hides a button is not a control").
+  if (slot.slot_date === today() && hasSlotStartPassed(slot.slot_date, slot.start_time)) {
+    throw conflict('That slot has already started. Please choose another time.');
   }
 
   await assertCentreAcceptsCrop(db, slot.centre_id, request.cropId);

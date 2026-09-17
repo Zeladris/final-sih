@@ -30,6 +30,12 @@ import {
 } from '../controllers/bookingController.js';
 import { getBookingStatus, getBookingStatusHistory } from '../controllers/statusController.js';
 import {
+  getBookingColdStorage,
+  getColdStorageFacilities,
+  postBookingColdStorage,
+} from '../controllers/coldStorageController.js';
+import { getBookingMspSummary } from '../controllers/mspSummaryController.js';
+import {
   getMyBookingPayment,
   getMyPayment,
   getMyPaymentHistory,
@@ -52,6 +58,7 @@ import {
   startRegistrationSchema,
   updateLandHoldingSchema,
 } from '../schemas/registration.js';
+import { reserveColdStorageSchema } from '../schemas/coldStorage.js';
 import {
   beginRegistration,
   deleteDocument,
@@ -325,6 +332,38 @@ farmerRouter.get(
   ...authedFarmer,
   validateParams(z.object({ bookingId: uuidSchema })),
   asyncHandler(getBookingStatusHistory),
+);
+
+// --- Demo MSP (demo addition) -------------------------------------------------
+
+farmerRouter.get(
+  '/bookings/:bookingId/msp-summary',
+  ...authedFarmer,
+  validateParams(z.object({ bookingId: uuidSchema })),
+  asyncHandler(getBookingMspSummary),
+);
+
+// --- Cold storage (demo addition) --------------------------------------------
+
+farmerRouter.get(
+  '/cold-storage/facilities',
+  ...authedFarmer,
+  asyncHandler(getColdStorageFacilities),
+);
+
+farmerRouter.get(
+  '/bookings/:bookingId/cold-storage',
+  ...authedFarmer,
+  validateParams(z.object({ bookingId: uuidSchema })),
+  asyncHandler(getBookingColdStorage),
+);
+
+farmerRouter.post(
+  '/bookings/:bookingId/cold-storage',
+  ...authedFarmer,
+  validateParams(z.object({ bookingId: uuidSchema })),
+  validateBody(reserveColdStorageSchema),
+  asyncHandler(postBookingColdStorage),
 );
 
 farmerRouter.post(

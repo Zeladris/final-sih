@@ -19,3 +19,5 @@ export * from './datetime.js';
 export * from './location.js';
 export * from './notifications.js';
 export * from './support.js';
+export * from './coldStorage.js';
+export * from './mspSummary.js';

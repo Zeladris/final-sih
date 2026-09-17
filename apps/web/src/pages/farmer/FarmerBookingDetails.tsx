@@ -7,6 +7,7 @@ import { useI18n, useT } from '../../i18n/index.js';
 import { FarmerHeader } from '../../components/farmer/FarmerHeader.js';
 import { ErrorPanel } from '../../components/AppShell.js';
 import { Spinner } from '../../components/Spinner.js';
+import { MspSummaryCard } from '../../features/procurement-status/components/MspSummaryCard.js';
 
 /**
  * One booking, in detail (§32, §33).
@@ -148,6 +149,10 @@ export function FarmerBookingDetails(): JSX.Element {
           ) : null}
         </dl>
       </section>
+
+      {/* Demo/indicative MSP (demo addition) — shown right after the crop and
+          quantity the farmer just booked. */}
+      <MspSummaryCard bookingId={booking.id} />
 
       {/* The pre-arrival indication, stated as exactly that (§15). */}
       {assessment?.status === 'COMPLETED' ? (

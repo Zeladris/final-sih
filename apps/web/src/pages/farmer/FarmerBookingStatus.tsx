@@ -6,6 +6,8 @@ import { ErrorPanel } from '../../components/AppShell.js';
 import { Spinner } from '../../components/Spinner.js';
 import { useProcurementStatus } from '../../features/procurement-status/hooks/useProcurementStatus.js';
 import { CurrentStatusCard } from '../../features/procurement-status/components/CurrentStatusCard.js';
+import { MspSummaryCard } from '../../features/procurement-status/components/MspSummaryCard.js';
+import { ColdStorageCard } from '../../features/procurement-status/components/ColdStorageCard.js';
 import { LiveIndicator } from '../../features/procurement-status/components/LiveIndicator.js';
 import { StatusTimeline } from '../../features/procurement-status/components/StatusTimeline.js';
 
@@ -73,6 +75,17 @@ export function FarmerBookingStatus(): JSX.Element {
       <ChangeNotice change={lastChange} />
 
       <CurrentStatusCard status={data} />
+
+      {/* Demo/indicative MSP (demo addition) — updates itself from booked to
+          procured quantity once weighing happens, same fetch-and-render-
+          nothing-if-absent pattern as the cold storage card below. */}
+      <MspSummaryCard bookingId={data.bookingId} />
+
+      {/* Cold storage (demo addition) — a sibling fact about this booking,
+          shown only when the centre could not procure the full crop today.
+          It has its own fetch and renders nothing when there's no offer and
+          no reservation, so the normal journey below is unaffected. */}
+      <ColdStorageCard bookingId={data.bookingId} />
 
       <section className="card">
         <dl className="space-y-2">

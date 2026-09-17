@@ -142,17 +142,23 @@ describe('no prototype language remains', () => {
    * verification claims out of the interface. It is not a ban on the word
    * itself: the payment provider genuinely is a demo that moves no money,
    * and Phase 8 requires saying so in as many words wherever an amount is
-   * shown. Hiding that would be the dishonesty this rule is protecting
-   * against, not compliance with it.
+   * shown. The demo MSP figures are the same kind of disclosure — never an
+   * official government MSP, always labelled as demo/indicative wherever a
+   * rate or an estimated value is shown. Hiding either would be the
+   * dishonesty this rule is protecting against, not compliance with it.
    *
-   * The list is exact keys, not a prefix: a new `payment.*` string does not
-   * get to opt itself out of the rule by being in the same namespace.
+   * The list is exact keys, not a prefix: a new `payment.*` or `msp.*`
+   * string does not get to opt itself out of the rule by being in the same
+   * namespace.
    */
-  const PAYMENT_HONESTY_KEYS = new Set([
+  const DEMO_HONESTY_KEYS = new Set([
     'payment.demoBanner',
     'payment.demoShort',
     'payment.demoSimulateFailure',
     'admin.payments.demo',
+    'msp.summary.demoBadge',
+    'msp.summary.rate',
+    'msp.summary.note',
   ]);
 
   it('mentions nothing about demos, test numbers or fake verification', () => {
@@ -173,7 +179,7 @@ describe('no prototype language remains', () => {
 
     for (const [bundleName, bundle] of bundles) {
       for (const [key, value] of Object.entries(bundle)) {
-        if (PAYMENT_HONESTY_KEYS.has(key)) continue;
+        if (DEMO_HONESTY_KEYS.has(key)) continue;
 
         for (const pattern of forbidden) {
           expect(
@@ -197,7 +203,7 @@ describe('no prototype language remains', () => {
   it('exempts no key that has since been deleted', () => {
     // A stale exemption is a hole in the rule that nothing would report, so
     // the allowlist is required to describe keys that actually exist.
-    const stale = [...PAYMENT_HONESTY_KEYS].filter((key) => !(key in en));
+    const stale = [...DEMO_HONESTY_KEYS].filter((key) => !(key in en));
     expect(stale, `exempt keys no longer in en.json: ${stale.join(', ')}`).toEqual([]);
   });
 });
