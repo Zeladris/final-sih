@@ -7,7 +7,7 @@
 # No secrets are baked in. Supabase keys and ML_SERVICE_URL arrive as
 # environment variables at run time.
 
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 
 WORKDIR /repo
 
@@ -22,7 +22,7 @@ COPY apps/api ./apps/api
 RUN npm run build -w @kisansetu/shared && npm run build -w @kisansetu/api
 
 # --- runtime ---------------------------------------------------------------
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /repo
